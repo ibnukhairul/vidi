@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Tamu Vidi Hamizan El Rafif</title>
+    <title>Tamu Vidi</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
             line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
         h1 {
             color: #333;
@@ -47,9 +50,14 @@
         th {
             background-color: #f2f2f2;
             cursor: pointer;
+            position: relative;
         }
-        th:hover {
-            background-color: #e6e6e6;
+        .filter-input {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 5px;
+            padding: 4px;
+            font-size: 12px;
         }
         .loading {
             display: inline-block;
@@ -64,39 +72,63 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        footer {
+            margin-top: 40px;
+            padding: 15px 0;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #eee;
+        }
+        .container {
+            flex: 1;
+        }
+        .result-count {
+            margin: 10px 0;
+            font-style: italic;
+            color: #555;
+        }
     </style>
 </head>
 <body>
-    <h1>Data Tamu Vidi Hamizan El Rafif</h1>
-    
-    <div class="controls">
-        <input type="text" id="searchInput" placeholder="Cari nama atau alamat...">
-        <button id="searchButton">Cari</button>
-        <select id="sortSelect">
-            <option value="">Urutkan berdasarkan...</option>
-            <option value="nama-asc">Nama (A-Z)</option>
-            <option value="nama-desc">Nama (Z-A)</option>
-            <option value="alamat-asc">Alamat (A-Z)</option>
-            <option value="alamat-desc">Alamat (Z-A)</option>
-        </select>
-        <button id="refreshButton">Refresh Data</button>
-        <span id="loading" class="loading" style="display: none;"></span>
+    <div class="container">
+        <h1>Data Tamu Vidi Hamizan El Rafif</h1>
+        
+        <div class="controls">
+            <select id="sortSelect">
+                <option value="">Urutkan berdasarkan...</option>
+                <option value="nama-asc">Nama (A-Z)</option>
+                <option value="nama-desc">Nama (Z-A)</option>
+                <option value="alamat-asc">Alamat (A-Z)</option>
+                <option value="alamat-desc">Alamat (Z-A)</option>
+            </select>
+            <button id="refreshButton">Refresh Data</button>
+            <span id="loading" class="loading" style="display: none;"></span>
+        </div>
+
+        <div id="resultCount" class="result-count">Menampilkan 0 data</div>
+        
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Waktu</th>
+                    <th>
+                        Nama
+                        <input type="text" class="filter-input" id="filterNama" placeholder="Filter nama...">
+                    </th>
+                    <th>
+                        Alamat
+                        <input type="text" class="filter-input" id="filterAlamat" placeholder="Filter alamat...">
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Data akan dimuat di sini -->
+            </tbody>
+        </table>
     </div>
-    
-    <table id="dataTable">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Waktu</th>
-                <th>Nama</th>
-                <th>Alamat</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            <!-- Data akan dimuat di sini -->
-        </tbody>
-    </table>
-    <footer style="
+
+  <footer style="
     margin-top: 40px;
     padding: 20px 0;
     text-align: center;
@@ -127,17 +159,13 @@
         let displayedData = [];
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Load data saat halaman dimuat
             loadData();
             
             // Event listeners
-            document.getElementById('searchButton').addEventListener('click', filterData);
-            document.getElementById('searchInput').addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') filterData();
-            });
-            
             document.getElementById('sortSelect').addEventListener('change', sortData);
             document.getElementById('refreshButton').addEventListener('click', loadData);
+            document.getElementById('filterNama').addEventListener('input', filterData);
+            document.getElementById('filterAlamat').addEventListener('input', filterData);
         });
 
         async function loadData() {
@@ -154,7 +182,6 @@
                 
                 const data = await response.json();
                 
-                // Format data ke array of objects
                 originalData = data.values.map((row, index) => ({
                     no: index + 1,
                     timestamp: row[0] || '',
@@ -164,6 +191,7 @@
                 
                 displayedData = [...originalData];
                 renderTable(displayedData);
+                updateResultCount();
                 showLoading(false);
                 
             } catch (error) {
@@ -195,16 +223,13 @@
         }
 
         function filterData() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const namaFilter = document.getElementById('filterNama').value.toLowerCase();
+            const alamatFilter = document.getElementById('filterAlamat').value.toLowerCase();
             
-            if (!searchTerm) {
-                displayedData = [...originalData];
-            } else {
-                displayedData = originalData.filter(row => 
-                    row.nama.toLowerCase().includes(searchTerm) || 
-                    row.alamat.toLowerCase().includes(searchTerm)
-                );
-            }
+            displayedData = originalData.filter(row => 
+                (namaFilter === '' || row.nama.toLowerCase().includes(namaFilter)) &&
+                (alamatFilter === '' || row.alamat.toLowerCase().includes(alamatFilter))
+            );
             
             // Apply current sort after filtering
             const sortSelect = document.getElementById('sortSelect');
@@ -213,6 +238,8 @@
             } else {
                 renderTable(displayedData);
             }
+            
+            updateResultCount();
         }
 
         function sortData() {
@@ -235,6 +262,11 @@
             });
             
             renderTable(displayedData);
+        }
+
+        function updateResultCount() {
+            const countElement = document.getElementById('resultCount');
+            countElement.textContent = `Hasil pencarian ada ${displayedData.length} dari ${originalData.length} total tamu`;
         }
 
         function showLoading(show) {
