@@ -74,10 +74,13 @@
         }
         footer {
             margin-top: 40px;
-            padding: 15px 0;
+            padding: 20px 0;
             text-align: center;
-            color: #666;
-            border-top: 1px solid #eee;
+            color: #555;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 0.9em;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e1e1e1;
         }
         .container {
             flex: 1;
@@ -87,7 +90,33 @@
             font-style: italic;
             color: #555;
         }
+        .chart-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        .chart-box {
+            width: 48%;
+            min-width: 300px;
+            border: 1px solid #eee;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #444;
+        }
+        canvas {
+            width: 100% !important;
+            height: auto !important;
+        }
     </style>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -106,6 +135,14 @@
         </div>
 
         <div id="resultCount" class="result-count">Menampilkan 0 data</div>
+        
+        <!-- Chart Section -->
+        <div class="chart-container">
+            <div class="chart-box">
+                <h3 class="chart-title">Distribusi Tamu Berdasarkan Alamat</h3>
+                <canvas id="alamatChart"></canvas>
+            </div>
+        </div>
         
         <table id="dataTable">
             <thead>
@@ -128,35 +165,27 @@
         </table>
     </div>
 
-  <footer style="
-    margin-top: 40px;
-    padding: 20px 0;
-    text-align: center;
-    color: #555;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 0.9em;
-    background-color: #f8f9fa;
-    border-top: 1px solid #e1e1e1;
-">
-    <div style="margin-bottom: 5px;">
-        <span style="color: #4285f4;">•</span>
-        <span style="margin: 0 10px;">by ibnu khairul</span>
-        <span style="color: #4285f4;">•</span>
-    </div>
-    <div style="font-size: 0.8em; color: #888;">
-        © 2025 All Rights Reserved
-    </div>
-</footer>
+    <footer>
+        <div style="margin-bottom: 5px;">
+            <span style="color: #4285f4;">•</span>
+            <span style="margin: 0 10px;">by ibnu khairul</span>
+            <span style="color: #4285f4;">•</span>
+        </div>
+        <div style="font-size: 0.8em; color: #888;">
+            © 2025 All Rights Reserved
+        </div>
+    </footer>
 
     <script>
         // Google Sheets API configuration
         const SPREADSHEET_ID = '1B4ofMCJEXjumgb1EZCuP0rDv_B81qvs6jkbtAVi1XAE';
         const API_KEY = 'AIzaSyCUZ6V-zecrXrTE94ltp3xIcWWFDm39gI0';
-        const SHEET_NAME = 'Form Responses 1'; // Sesuaikan dengan nama sheet Anda
-        const RANGE = 'A2:D'; // Kolom A (Timestamp) sampai D (Alamat)
+        const SHEET_NAME = 'Form Responses 1';
+        const RANGE = 'A2:D';
 
         let originalData = [];
         let displayedData = [];
+        let alamatChart = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
@@ -192,6 +221,7 @@
                 displayedData = [...originalData];
                 renderTable(displayedData);
                 updateResultCount();
+                updateCharts();
                 showLoading(false);
                 
             } catch (error) {
@@ -240,6 +270,7 @@
             }
             
             updateResultCount();
+            updateCharts();
         }
 
         function sortData() {
@@ -267,6 +298,77 @@
         function updateResultCount() {
             const countElement = document.getElementById('resultCount');
             countElement.textContent = `Hasil pencarian ada ${displayedData.length} dari ${originalData.length} total tamu`;
+        }
+
+        function updateCharts() {
+            // Hitung distribusi alamat
+            const alamatCounts = {};
+            displayedData.forEach(row => {
+                const alamat = row.alamat || 'Tidak diketahui';
+                alamatCounts[alamat] = (alamatCounts[alamat] || 0) + 1;
+            });
+
+            // Urutkan dari yang terbanyak
+            const sortedAlamat = Object.entries(alamatCounts)
+                .sort((a, b) => b[1] - a[1]);
+
+            // Siapkan data untuk chart
+            const labels = sortedAlamat.map(item => item[0]);
+            const data = sortedAlamat.map(item => item[1]);
+            const backgroundColors = generateColors(labels.length);
+
+            // Update atau buat chart alamat
+            const ctx = document.getElementById('alamatChart').getContext('2d');
+            
+            if (alamatChart) {
+                alamatChart.data.labels = labels;
+                alamatChart.data.datasets[0].data = data;
+                alamatChart.data.datasets[0].backgroundColor = backgroundColors;
+                alamatChart.update();
+            } else {
+                alamatChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((value / total) * 100);
+                                        return `${label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function generateColors(count) {
+            const colors = [];
+            const hueStep = 360 / count;
+            
+            for (let i = 0; i < count; i++) {
+                const hue = i * hueStep;
+                colors.push(`hsl(${hue}, 70%, 60%)`);
+            }
+            
+            return colors;
         }
 
         function showLoading(show) {
