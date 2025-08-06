@@ -170,48 +170,6 @@
             height: auto !important;
         }
         
-        /* PDF Template Styles (hidden) */
-        .pdf-template {
-            display: none;
-            width: 210mm;
-            height: 297mm;
-            padding: 20mm;
-            box-sizing: border-box;
-        }
-        .pdf-page1 {
-            text-align: center;
-        }
-        .pdf-page1 .chart-title {
-            font-size: 18pt;
-            margin-bottom: 20px;
-        }
-        .pdf-page1 .total-count {
-            font-size: 24pt;
-            margin: 20px 0;
-        }
-        .pdf-page2 {
-            font-family: Arial;
-        }
-        .pdf-page2 h2 {
-            text-align: center;
-            font-size: 18pt;
-            margin-bottom: 20px;
-        }
-        .pdf-legend-item {
-            display: flex;
-            margin-bottom: 8px;
-            font-size: 10pt;
-            align-items: center;
-        }
-        .pdf-legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-        
-        /* Responsive adjustments */
         @media (max-width: 600px) {
             .controls {
                 flex-direction: column;
@@ -238,9 +196,7 @@
             }
         }
     </style>
-    <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- jsPDF dan html2canvas untuk export PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -263,7 +219,6 @@
 
         <div id="resultCount" class="result-count">Menampilkan 0 data</div>
         
-        <!-- Chart Section -->
         <div class="chart-container">
             <div class="chart-box">
                 <h3 class="chart-title">Distribusi Tamu Berdasarkan Alamat</h3>
@@ -298,19 +253,6 @@
         </table>
     </div>
 
-    <!-- Template untuk PDF (hidden) -->
-    <div id="pdfTemplate" style="display: none;">
-        <div id="pdfPage1" class="pdf-template pdf-page1">
-            <h1 class="chart-title">Distribusi Tamu Berdasarkan Alamat</h1>
-            <div id="pdfTotalCount" class="total-count">0 Tamu</div>
-            <canvas id="pdfChart"></canvas>
-        </div>
-        <div id="pdfPage2" class="pdf-template pdf-page2">
-            <h2>Detail Tamu Berdasarkan Alamat</h2>
-            <div id="pdfLegend"></div>
-        </div>
-    </div>
-
     <footer>
         <div style="margin-bottom: 5px;">
             <span style="color: #4285f4;">•</span>
@@ -338,14 +280,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
             
-            // Event listeners
             document.getElementById('sortSelect').addEventListener('change', sortData);
             document.getElementById('refreshButton').addEventListener('click', loadData);
             document.getElementById('exportButton').addEventListener('click', exportToPDF);
             document.getElementById('filterNama').addEventListener('input', filterData);
             document.getElementById('filterAlamat').addEventListener('input', filterData);
 
-            // Handle window resize for chart responsiveness
             window.addEventListener('resize', function() {
                 if (alamatChart) {
                     alamatChart.resize();
@@ -417,7 +357,6 @@
                 (alamatFilter === '' || row.alamat.toLowerCase().includes(alamatFilter))
             );
             
-            // Apply current sort after filtering
             const sortSelect = document.getElementById('sortSelect');
             if (sortSelect.value) {
                 sortData();
@@ -457,26 +396,21 @@
         }
 
         function updateCharts() {
-            // Update total tamu
             document.getElementById('totalTamu').textContent = displayedData.length;
             
-            // Hitung distribusi alamat (termasuk yang hanya ada 1 data)
             const alamatCounts = {};
             displayedData.forEach(row => {
                 const alamat = row.alamat;
                 alamatCounts[alamat] = (alamatCounts[alamat] || 0) + 1;
             });
 
-            // Urutkan dari yang terbanyak
             const sortedAlamat = Object.entries(alamatCounts)
                 .sort((a, b) => b[1] - a[1]);
 
-            // Format labels
             const labels = sortedAlamat.map(item => item[0]);
             const data = sortedAlamat.map(item => item[1]);
             const backgroundColors = generateColors(sortedAlamat.length);
 
-            // Update atau buat chart alamat
             const ctx = document.getElementById('alamatChart').getContext('2d');
             
             if (alamatChart) {
@@ -500,7 +434,7 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                display: false // Kami menggunakan custom legend
+                                display: false
                             },
                             tooltip: {
                                 callbacks: {
@@ -518,7 +452,6 @@
                 });
             }
 
-            // Update custom legend
             updateLegend(labels, backgroundColors, data);
         }
 
@@ -526,7 +459,6 @@
             const legendContainer = document.getElementById('chartLegend');
             legendContainer.innerHTML = '';
             
-            // Create columns with 10 items each
             const itemsPerColumn = 10;
             const columnCount = Math.ceil(labels.length / itemsPerColumn);
             
@@ -554,102 +486,134 @@
         function exportToPDF() {
             showLoading(true);
             
-            // Siapkan data untuk PDF
-            const alamatCounts = {};
-            displayedData.forEach(row => {
-                const alamat = row.alamat;
-                alamatCounts[alamat] = (alamatCounts[alamat] || 0) + 1;
-            });
-            
-            const sortedAlamat = Object.entries(alamatCounts)
-                .sort((a, b) => b[1] - a[1]);
-            
-            const labels = sortedAlamat.map(item => item[0]);
-            const data = sortedAlamat.map(item => item[1]);
-            const backgroundColors = generateColors(sortedAlamat.length);
-            
-            // Update template PDF
-            document.getElementById('pdfTotalCount').textContent = `${displayedData.length} Tamu`;
-            
-            // Buat chart untuk PDF
-            const pdfCtx = document.getElementById('pdfChart').getContext('2d');
-            const pdfChart = new Chart(pdfCtx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: backgroundColors,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: {
-                                    size: 12
-                                }
+            if (!window.jspdf || !window.html2canvas) {
+                alert('Library export tidak terload. Silakan refresh halaman.');
+                showLoading(false);
+                return;
+            }
+
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.width = '210mm';
+                tempDiv.style.padding = '20mm';
+                document.body.appendChild(tempDiv);
+                
+                const alamatCounts = {};
+                displayedData.forEach(row => {
+                    const alamat = row.alamat;
+                    alamatCounts[alamat] = (alamatCounts[alamat] || 0) + 1;
+                });
+                
+                const sortedAlamat = Object.entries(alamatCounts).sort((a, b) => b[1] - a[1]);
+                const labels = sortedAlamat.map(item => item[0]);
+                const data = sortedAlamat.map(item => item[1]);
+                const backgroundColors = generateColors(sortedAlamat.length);
+                
+                // Halaman 1 - Chart
+                const page1 = document.createElement('div');
+                page1.style.textAlign = 'center';
+                page1.style.fontFamily = 'Arial';
+                page1.innerHTML = `
+                    <h1 style="font-size:18pt;margin-bottom:20px;">Distribusi Tamu Berdasarkan Alamat</h1>
+                    <div style="font-size:24pt;color:#4285f4;margin:20px 0;">${displayedData.length} Tamu</div>
+                    <canvas id="tempChart" width="600" height="400"></canvas>
+                `;
+                
+                // Halaman 2 - Detail
+                const page2 = document.createElement('div');
+                page2.style.fontFamily = 'Arial';
+                page2.style.padding = '20px';
+                page2.innerHTML = '<h2 style="text-align:center;font-size:18pt;margin-bottom:20px;">Detail Tamu Berdasarkan Alamat</h2>';
+                
+                sortedAlamat.forEach((item, index) => {
+                    const percentage = Math.round((item[1]/displayedData.length)*100);
+                    const itemDiv = document.createElement('div');
+                    itemDiv.style.display = 'flex';
+                    itemDiv.style.marginBottom = '8px';
+                    itemDiv.style.alignItems = 'center';
+                    itemDiv.innerHTML = `
+                        <div style="width:12px;height:12px;border-radius:50%;background-color:${backgroundColors[index]};margin-right:8px;"></div>
+                        <span><strong>${item[0]}:</strong> ${item[1]} tamu (${percentage}%)</span>
+                    `;
+                    page2.appendChild(itemDiv);
+                });
+                
+                tempDiv.appendChild(page1);
+                tempDiv.appendChild(page2);
+                
+                // Render chart
+                const tempCtx = document.getElementById('tempChart').getContext('2d');
+                const tempChart = new Chart(tempCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
                             }
                         }
                     }
-                }
-            });
-            
-            // Isi legend untuk halaman 2
-            const pdfLegend = document.getElementById('pdfLegend');
-            pdfLegend.innerHTML = '';
-            
-            sortedAlamat.forEach((item, index) => {
-                const legendItem = document.createElement('div');
-                legendItem.className = 'pdf-legend-item';
-                legendItem.innerHTML = `
-                    <div class="pdf-legend-color" style="background-color: ${backgroundColors[index]};"></div>
-                    <span><strong>${item[0]}:</strong> ${item[1]} tamu (${Math.round((item[1]/displayedData.length)*100)}%)</span>
-                `;
-                pdfLegend.appendChild(legendItem);
-            });
-            
-            // Tunggu sebentar untuk memastikan chart terrender
-            setTimeout(() => {
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm'
                 });
                 
-                // Export halaman 1 (chart)
-                html2canvas(document.getElementById('pdfPage1'), {
-                    scale: 2,
-                    logging: false,
-                    useCORS: true
-                }).then(canvas1 => {
-                    const imgData1 = canvas1.toDataURL('image/png');
-                    pdf.addImage(imgData1, 'PNG', 0, 0, 210, 297);
-                    
-                    // Tambah halaman baru
-                    pdf.addPage();
-                    
-                    // Export halaman 2 (legend)
-                    html2canvas(document.getElementById('pdfPage2'), {
-                        scale: 2,
-                        logging: false,
-                        useCORS: true
-                    }).then(canvas2 => {
-                        const imgData2 = canvas2.toDataURL('image/png');
-                        pdf.addImage(imgData2, 'PNG', 0, 0, 210, 297);
-                        
-                        // Simpan PDF
-                        pdf.save(`Data Tamu Vidi - ${new Date().toLocaleDateString()}.pdf`);
-                        showLoading(false);
-                        
-                        // Hancurkan chart PDF setelah selesai
-                        pdfChart.destroy();
+                setTimeout(() => {
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm'
                     });
-                });
-            }, 1000);
+                    
+                    // Export halaman 1
+                    html2canvas(page1, {
+                        scale: 1,
+                        logging: true,
+                        useCORS: true
+                    }).then(canvas1 => {
+                        const imgData1 = canvas1.toDataURL('image/png');
+                        pdf.addImage(imgData1, 'PNG', 0, 0, 210, 297);
+                        
+                        // Export halaman 2
+                        html2canvas(page2, {
+                            scale: 1,
+                            logging: true,
+                            useCORS: true
+                        }).then(canvas2 => {
+                            const imgData2 = canvas2.toDataURL('image/png');
+                            pdf.addPage();
+                            pdf.addImage(imgData2, 'PNG', 0, 0, 210, 297);
+                            
+                            pdf.save(`Data_Tamu_Vidi_${new Date().toISOString().slice(0,10)}.pdf`);
+                            document.body.removeChild(tempDiv);
+                            tempChart.destroy();
+                            showLoading(false);
+                        }).catch(err => {
+                            console.error('Error halaman 2:', err);
+                            document.body.removeChild(tempDiv);
+                            showLoading(false);
+                            alert('Gagal membuat halaman 2 PDF');
+                        });
+                    }).catch(err => {
+                        console.error('Error halaman 1:', err);
+                        document.body.removeChild(tempDiv);
+                        showLoading(false);
+                        alert('Gagal membuat halaman 1 PDF');
+                    });
+                }, 1000);
+                
+            } catch (err) {
+                console.error('Error export PDF:', err);
+                showLoading(false);
+                alert('Terjadi kesalahan saat export PDF');
+            }
         }
 
         function generateColors(count) {
