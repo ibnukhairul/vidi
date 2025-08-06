@@ -198,7 +198,6 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -486,128 +485,57 @@
         function exportToPDF() {
             showLoading(true);
             
-            if (!window.jspdf || !window.html2canvas) {
-                alert('Library export tidak terload. Silakan refresh halaman.');
+            if (!window.jspdf) {
+                alert('Library PDF tidak terload. Silakan refresh halaman.');
                 showLoading(false);
                 return;
             }
 
             try {
-                const tempDiv = document.createElement('div');
-                tempDiv.style.position = 'absolute';
-                tempDiv.style.left = '-9999px';
-                tempDiv.style.width = '210mm';
-                tempDiv.style.padding = '20mm';
-                document.body.appendChild(tempDiv);
-                
+                // Hitung distribusi alamat
                 const alamatCounts = {};
                 displayedData.forEach(row => {
                     const alamat = row.alamat;
                     alamatCounts[alamat] = (alamatCounts[alamat] || 0) + 1;
                 });
+
+                // Urutkan dari yang terbanyak
+                const sortedAlamat = Object.entries(alamatCounts)
+                    .sort((a, b) => b[1] - a[1]);
+
+                // Buat PDF
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm'
+                });
+
+                // Judul
+                pdf.setFontSize(18);
+                pdf.text('Data Tamu Berdasarkan Alamat', 105, 20, { align: 'center' });
                 
-                const sortedAlamat = Object.entries(alamatCounts).sort((a, b) => b[1] - a[1]);
-                const labels = sortedAlamat.map(item => item[0]);
-                const data = sortedAlamat.map(item => item[1]);
-                const backgroundColors = generateColors(sortedAlamat.length);
+                // Total tamu
+                pdf.setFontSize(14);
+                pdf.setTextColor(66, 133, 244);
+                pdf.text(`Total Tamu: ${displayedData.length}`, 105, 30, { align: 'center' });
                 
-                // Halaman 1 - Chart
-                const page1 = document.createElement('div');
-                page1.style.textAlign = 'center';
-                page1.style.fontFamily = 'Arial';
-                page1.innerHTML = `
-                    <h1 style="font-size:18pt;margin-bottom:20px;">Distribusi Tamu Berdasarkan Alamat</h1>
-                    <div style="font-size:24pt;color:#4285f4;margin:20px 0;">${displayedData.length} Tamu</div>
-                    <canvas id="tempChart" width="600" height="400"></canvas>
-                `;
+                // Daftar alamat
+                pdf.setFontSize(12);
+                pdf.setTextColor(0, 0, 0);
                 
-                // Halaman 2 - Detail
-                const page2 = document.createElement('div');
-                page2.style.fontFamily = 'Arial';
-                page2.style.padding = '20px';
-                page2.innerHTML = '<h2 style="text-align:center;font-size:18pt;margin-bottom:20px;">Detail Tamu Berdasarkan Alamat</h2>';
-                
+                let yPosition = 45;
                 sortedAlamat.forEach((item, index) => {
-                    const percentage = Math.round((item[1]/displayedData.length)*100);
-                    const itemDiv = document.createElement('div');
-                    itemDiv.style.display = 'flex';
-                    itemDiv.style.marginBottom = '8px';
-                    itemDiv.style.alignItems = 'center';
-                    itemDiv.innerHTML = `
-                        <div style="width:12px;height:12px;border-radius:50%;background-color:${backgroundColors[index]};margin-right:8px;"></div>
-                        <span><strong>${item[0]}:</strong> ${item[1]} tamu (${percentage}%)</span>
-                    `;
-                    page2.appendChild(itemDiv);
-                });
-                
-                tempDiv.appendChild(page1);
-                tempDiv.appendChild(page2);
-                
-                // Render chart
-                const tempCtx = document.getElementById('tempChart').getContext('2d');
-                const tempChart = new Chart(tempCtx, {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: backgroundColors,
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: false,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right'
-                            }
-                        }
+                    if (yPosition > 270) {
+                        pdf.addPage();
+                        yPosition = 20;
                     }
-                });
-                
-                setTimeout(() => {
-                    const pdf = new jsPDF({
-                        orientation: 'portrait',
-                        unit: 'mm'
-                    });
                     
-                    // Export halaman 1
-                    html2canvas(page1, {
-                        scale: 1,
-                        logging: true,
-                        useCORS: true
-                    }).then(canvas1 => {
-                        const imgData1 = canvas1.toDataURL('image/png');
-                        pdf.addImage(imgData1, 'PNG', 0, 0, 210, 297);
-                        
-                        // Export halaman 2
-                        html2canvas(page2, {
-                            scale: 1,
-                            logging: true,
-                            useCORS: true
-                        }).then(canvas2 => {
-                            const imgData2 = canvas2.toDataURL('image/png');
-                            pdf.addPage();
-                            pdf.addImage(imgData2, 'PNG', 0, 0, 210, 297);
-                            
-                            pdf.save(`Data_Tamu_Vidi_${new Date().toISOString().slice(0,10)}.pdf`);
-                            document.body.removeChild(tempDiv);
-                            tempChart.destroy();
-                            showLoading(false);
-                        }).catch(err => {
-                            console.error('Error halaman 2:', err);
-                            document.body.removeChild(tempDiv);
-                            showLoading(false);
-                            alert('Gagal membuat halaman 2 PDF');
-                        });
-                    }).catch(err => {
-                        console.error('Error halaman 1:', err);
-                        document.body.removeChild(tempDiv);
-                        showLoading(false);
-                        alert('Gagal membuat halaman 1 PDF');
-                    });
-                }, 1000);
+                    pdf.text(`${item[0]}: ${item[1]} tamu`, 20, yPosition);
+                    yPosition += 8;
+                });
+
+                // Simpan PDF
+                pdf.save(`Data_Tamu_Vidi_${new Date().toISOString().slice(0,10)}.pdf`);
+                showLoading(false);
                 
             } catch (err) {
                 console.error('Error export PDF:', err);
