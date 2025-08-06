@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 10px;
             line-height: 1.6;
             display: flex;
             flex-direction: column;
@@ -15,24 +15,27 @@
         }
         h1 {
             color: #333;
+            font-size: 1.5rem;
         }
         .controls {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
         }
         input, button, select {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            font-size: 0.9rem;
         }
         button {
             background-color: #4285f4;
             color: white;
             cursor: pointer;
             border: none;
+            white-space: nowrap;
         }
         button:hover {
             background-color: #3367d6;
@@ -40,45 +43,44 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 15px;
+            font-size: 0.9rem;
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px 12px;
+            padding: 6px 8px;
             text-align: left;
         }
         th {
             background-color: #f2f2f2;
-            cursor: pointer;
             position: relative;
         }
         .filter-input {
             width: 100%;
             box-sizing: border-box;
-            margin-top: 5px;
-            padding: 4px;
-            font-size: 12px;
+            margin-top: 3px;
+            padding: 3px;
+            font-size: 0.8rem;
         }
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(0,0,0,.3);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,.3);
             border-radius: 50%;
             border-top-color: #4285f4;
             animation: spin 1s ease-in-out infinite;
-            margin-left: 10px;
+            margin-left: 8px;
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
         footer {
-            margin-top: 40px;
-            padding: 20px 0;
+            margin-top: 30px;
+            padding: 15px 0;
             text-align: center;
             color: #555;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 0.9em;
+            font-size: 0.8rem;
             background-color: #f8f9fa;
             border-top: 1px solid #e1e1e1;
         }
@@ -86,33 +88,54 @@
             flex: 1;
         }
         .result-count {
-            margin: 10px 0;
+            margin: 8px 0;
             font-style: italic;
             color: #555;
+            font-size: 0.9rem;
         }
         .chart-container {
             display: flex;
-            justify-content: space-between;
-            margin: 30px 0;
+            justify-content: center;
+            margin: 20px 0;
             flex-wrap: wrap;
         }
         .chart-box {
-            width: 48%;
-            min-width: 300px;
+            width: 100%;
+            max-width: 500px;
             border: 1px solid #eee;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .chart-title {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             color: #444;
+            font-size: 1rem;
         }
         canvas {
             width: 100% !important;
             height: auto !important;
+            max-height: 300px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            button, select {
+                width: 100%;
+            }
+            th, td {
+                padding: 4px 6px;
+                font-size: 0.8rem;
+            }
+            .chart-box {
+                padding: 8px;
+            }
         }
     </style>
     <!-- Chart.js Library -->
@@ -195,6 +218,13 @@
             document.getElementById('refreshButton').addEventListener('click', loadData);
             document.getElementById('filterNama').addEventListener('input', filterData);
             document.getElementById('filterAlamat').addEventListener('input', filterData);
+
+            // Handle window resize for chart responsiveness
+            window.addEventListener('resize', function() {
+                if (alamatChart) {
+                    alamatChart.resize();
+                }
+            });
         });
 
         async function loadData() {
@@ -215,7 +245,7 @@
                     no: index + 1,
                     timestamp: row[0] || '',
                     nama: row[1] || '',
-                    alamat: row[2] || ''
+                    alamat: row[2] || 'Tidak diketahui'
                 }));
                 
                 displayedData = [...originalData];
@@ -304,7 +334,7 @@
             // Hitung distribusi alamat
             const alamatCounts = {};
             displayedData.forEach(row => {
-                const alamat = row.alamat || 'Tidak diketahui';
+                const alamat = row.alamat;
                 alamatCounts[alamat] = (alamatCounts[alamat] || 0) + 1;
             });
 
@@ -312,10 +342,10 @@
             const sortedAlamat = Object.entries(alamatCounts)
                 .sort((a, b) => b[1] - a[1]);
 
-            // Siapkan data untuk chart
-            const labels = sortedAlamat.map(item => item[0]);
+            // Format labels dengan menambahkan jumlah
+            const labels = sortedAlamat.map(item => `${item[0]} (${item[1]})`);
             const data = sortedAlamat.map(item => item[1]);
-            const backgroundColors = generateColors(labels.length);
+            const backgroundColors = generateColors(sortedAlamat.length);
 
             // Update atau buat chart alamat
             const ctx = document.getElementById('alamatChart').getContext('2d');
@@ -338,9 +368,17 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: {
                                 position: 'right',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 10,
+                                    font: {
+                                        size: window.innerWidth < 600 ? 10 : 12
+                                    }
+                                }
                             },
                             tooltip: {
                                 callbacks: {
@@ -349,7 +387,7 @@
                                         const value = context.raw || 0;
                                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                         const percentage = Math.round((value / total) * 100);
-                                        return `${label}: ${value} (${percentage}%)`;
+                                        return `${label.split(' (')[0]}: ${value} (${percentage}%)`;
                                     }
                                 }
                             }
