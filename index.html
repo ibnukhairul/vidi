@@ -110,9 +110,16 @@
         }
         .chart-title {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             color: #444;
             font-size: 1rem;
+        }
+        .total-count {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4285f4;
+            margin: 5px 0 10px;
         }
         canvas {
             width: 100% !important;
@@ -135,6 +142,9 @@
             }
             .chart-box {
                 padding: 8px;
+            }
+            .total-count {
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -163,6 +173,7 @@
         <div class="chart-container">
             <div class="chart-box">
                 <h3 class="chart-title">Distribusi Tamu Berdasarkan Alamat</h3>
+                <div id="totalTamu" class="total-count">0</div>
                 <canvas id="alamatChart"></canvas>
             </div>
         </div>
@@ -327,10 +338,13 @@
 
         function updateResultCount() {
             const countElement = document.getElementById('resultCount');
-            countElement.textContent = `Hasil pencarian ada ${displayedData.length} dari ${originalData.length} total tamu`;
+            countElement.textContent = `Menampilkan ${displayedData.length} dari ${originalData.length} tamu`;
         }
 
         function updateCharts() {
+            // Update total tamu
+            document.getElementById('totalTamu').textContent = displayedData.length;
+            
             // Hitung distribusi alamat
             const alamatCounts = {};
             displayedData.forEach(row => {
