@@ -101,7 +101,7 @@
         }
         .chart-box {
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             border: 1px solid #eee;
             padding: 10px;
             border-radius: 8px;
@@ -121,10 +121,48 @@
             color: #4285f4;
             margin: 5px 0 10px;
         }
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            min-height: 300px;
+        }
+        .chart-legend-container {
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .chart-legend {
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            max-height: 180px;
+        }
+        .chart-legend-column {
+            flex: 1;
+            min-width: 150px;
+            margin-right: 15px;
+        }
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            font-size: 0.8rem;
+        }
+        .chart-legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+            flex-shrink: 0;
+        }
         canvas {
             width: 100% !important;
             height: auto !important;
-            max-height: 300px;
         }
         
         /* Responsive adjustments */
@@ -145,6 +183,12 @@
             }
             .total-count {
                 font-size: 1.5rem;
+            }
+            .chart-legend-item {
+                font-size: 0.7rem;
+            }
+            .chart-legend-column {
+                min-width: 120px;
             }
         }
     </style>
@@ -174,7 +218,12 @@
             <div class="chart-box">
                 <h3 class="chart-title">Distribusi Tamu Berdasarkan Alamat</h3>
                 <div id="totalTamu" class="total-count">0</div>
-                <canvas id="alamatChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="alamatChart"></canvas>
+                </div>
+                <div class="chart-legend-container">
+                    <div id="chartLegend" class="chart-legend"></div>
+                </div>
             </div>
         </div>
         
@@ -345,7 +394,7 @@
             // Update total tamu
             document.getElementById('totalTamu').textContent = displayedData.length;
             
-            // Hitung distribusi alamat
+            // Hitung distribusi alamat (termasuk yang hanya ada 1 data)
             const alamatCounts = {};
             displayedData.forEach(row => {
                 const alamat = row.alamat;
@@ -356,8 +405,8 @@
             const sortedAlamat = Object.entries(alamatCounts)
                 .sort((a, b) => b[1] - a[1]);
 
-            // Format labels dengan menambahkan jumlah
-            const labels = sortedAlamat.map(item => `${item[0]} (${item[1]})`);
+            // Format labels
+            const labels = sortedAlamat.map(item => item[0]);
             const data = sortedAlamat.map(item => item[1]);
             const backgroundColors = generateColors(sortedAlamat.length);
 
@@ -385,14 +434,7 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                position: 'right',
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 10,
-                                    font: {
-                                        size: window.innerWidth < 600 ? 10 : 12
-                                    }
-                                }
+                                display: false // Kami menggunakan custom legend
                             },
                             tooltip: {
                                 callbacks: {
@@ -401,13 +443,45 @@
                                         const value = context.raw || 0;
                                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                         const percentage = Math.round((value / total) * 100);
-                                        return `${label.split(' (')[0]}: ${value} (${percentage}%)`;
+                                        return `${label}: ${value} (${percentage}%)`;
                                     }
                                 }
                             }
                         }
                     }
                 });
+            }
+
+            // Update custom legend
+            updateLegend(labels, backgroundColors, data);
+        }
+
+        function updateLegend(labels, colors, counts) {
+            const legendContainer = document.getElementById('chartLegend');
+            legendContainer.innerHTML = '';
+            
+            // Create columns with 10 items each
+            const itemsPerColumn = 10;
+            const columnCount = Math.ceil(labels.length / itemsPerColumn);
+            
+            for (let i = 0; i < columnCount; i++) {
+                const column = document.createElement('div');
+                column.className = 'chart-legend-column';
+                
+                const startIdx = i * itemsPerColumn;
+                const endIdx = Math.min(startIdx + itemsPerColumn, labels.length);
+                
+                for (let j = startIdx; j < endIdx; j++) {
+                    const legendItem = document.createElement('div');
+                    legendItem.className = 'chart-legend-item';
+                    legendItem.innerHTML = `
+                        <div class="chart-legend-color" style="background-color: ${colors[j]};"></div>
+                        ${labels[j]} (${counts[j]})
+                    `;
+                    column.appendChild(legendItem);
+                }
+                
+                legendContainer.appendChild(column);
             }
         }
 
