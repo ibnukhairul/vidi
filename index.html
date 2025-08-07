@@ -157,6 +157,10 @@
             margin-bottom: 5px;
             white-space: nowrap;
             font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .chart-legend-item:hover {
+            text-decoration: underline;
         }
         .chart-legend-color {
             width: 12px;
@@ -276,6 +280,7 @@
         let originalData = [];
         let displayedData = [];
         let alamatChart = null;
+        let highlightedIndex = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
@@ -447,12 +452,34 @@
                                     }
                                 }
                             }
+                        },
+                        onClick: function(evt, elements) {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                highlightSlice(index);
+                            }
                         }
                     }
                 });
             }
 
             updateLegend(labels, backgroundColors, data);
+        }
+
+        function highlightSlice(index) {
+            // Reset previous highlight
+            if (highlightedIndex !== null) {
+                alamatChart.data.datasets[0].backgroundColor[highlightedIndex] = 
+                    generateColors(alamatChart.data.labels.length)[highlightedIndex];
+            }
+            
+            // Set new highlight
+            highlightedIndex = index;
+            alamatChart.data.datasets[0].backgroundColor[index] = '#FF6384'; // Warna merah untuk highlight
+            alamatChart.update();
+            
+            // Update legend highlight
+            updateLegendHighlight(index);
         }
 
         function updateLegend(labels, colors, counts) {
@@ -472,15 +499,36 @@
                 for (let j = startIdx; j < endIdx; j++) {
                     const legendItem = document.createElement('div');
                     legendItem.className = 'chart-legend-item';
+                    legendItem.dataset.index = j;
                     legendItem.innerHTML = `
                         <div class="chart-legend-color" style="background-color: ${colors[j]};"></div>
                         ${labels[j]} (${counts[j]})
                     `;
+                    
+                    // Tambahkan event listener untuk highlight saat legend diklik
+                    legendItem.addEventListener('click', function() {
+                        highlightSlice(j);
+                    });
+                    
                     column.appendChild(legendItem);
                 }
                 
                 legendContainer.appendChild(column);
             }
+        }
+
+        function updateLegendHighlight(index) {
+            const legendItems = document.querySelectorAll('.chart-legend-item');
+            
+            legendItems.forEach((item, i) => {
+                if (i === index) {
+                    item.style.fontWeight = 'bold';
+                    item.style.color = '#FF6384';
+                } else {
+                    item.style.fontWeight = 'normal';
+                    item.style.color = '';
+                }
+            });
         }
 
         function exportToPDF() {
