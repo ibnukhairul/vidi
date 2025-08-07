@@ -474,9 +474,17 @@
             }
             
             // Set new highlight
-            highlightedIndex = index;
-            alamatChart.data.datasets[0].backgroundColor[index] = '#FF6384'; // Warna merah untuk highlight
-            alamatChart.update();
+highlightedIndex = index;
+
+// Highlight warna isi
+alamatChart.data.datasets[0].backgroundColor[index] = '#FF6384'; // Warna merah highlight
+
+// Tambahkan outline hitam
+alamatChart.data.datasets[0].borderColor[index] = '#000000'; // Warna hitam
+alamatChart.data.datasets[0].borderWidth[index] = 3; // Lebar outline (px)
+
+// Update chart agar terlihat
+alamatChart.update();
             
             // Update legend highlight
             updateLegendHighlight(index);
